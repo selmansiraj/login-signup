@@ -1,12 +1,45 @@
-import React, { useState } from "react";
-import Login from "./components/login.js";
-import Signup from "./components/signup.js";
+import React from "react";
+
+import {
+  BrowserRouter,
+  Routes,
+  Route
+}
+from "react-router-dom";
+
+import Login from "./components/login";
+import Signup from "./components/signup";
+import Dashboard from "./components/Dashboard";
 
 function App() {
-  const [page,setPage] = useState("login");
-  return page==="login"
-    ? <Login goToSignup={()=>setPage("signup")}/>
-    : <Signup goToLogin={()=>setPage("login")}/>;
+
+  return (
+
+    <BrowserRouter>
+
+      <Routes>
+
+        <Route
+          path="/"
+          element={<Login />}
+        />
+
+        <Route
+          path="/signup"
+          element={<Signup />}
+        />
+
+        <Route
+          path="/dashboard"
+          element={<Dashboard />}
+        />
+
+      </Routes>
+
+    </BrowserRouter>
+
+  );
+
 }
 
 export default App;
