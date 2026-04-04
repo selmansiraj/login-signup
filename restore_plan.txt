@@ -1,0 +1,16 @@
+﻿C:\Users\Lenovo\AppData\Roaming\Code\User\History\-2ee400ed\48px.jsx -> c:\Users\Lenovo\Documents\login-signup\src\components\Dashboard.jsx
+C:\Users\Lenovo\AppData\Roaming\Code\User\History\-3931c9a4\1f4A.js -> c:\Users\Lenovo\Documents\login-signup\src\index.js
+C:\Users\Lenovo\AppData\Roaming\Code\User\History\-514b1751\QASK.css -> c:\Users\Lenovo\Documents\login-signup\src\style.css
+C:\Users\Lenovo\AppData\Roaming\Code\User\History\-578ff210\1gvA.js -> c:\Users\Lenovo\Documents\login-signup\src\components\login.js
+C:\Users\Lenovo\AppData\Roaming\Code\User\History\-66fc6605\zf50.jsx -> c:\Users\Lenovo\Documents\login-signup\src\components\signup.jsx
+C:\Users\Lenovo\AppData\Roaming\Code\User\History\-70b43993\uhZm.jsx -> c:\Users\Lenovo\Documents\login-signup\src\components\edit.jsx
+C:\Users\Lenovo\AppData\Roaming\Code\User\History\12f87b50\DDbM.css -> c:\Users\Lenovo\Documents\login-signup\src\index.css
+C:\Users\Lenovo\AppData\Roaming\Code\User\History\274d75d1\64s0.js -> c:\Users\Lenovo\Desktop\login-signup\src\app.js
+C:\Users\Lenovo\AppData\Roaming\Code\User\History\2c3a4c8d\1TGX.js -> c:\Users\Lenovo\Documents\login-signup\src\App.js
+C:\Users\Lenovo\AppData\Roaming\Code\User\History\2e20842b\KIBB.js -> c:\Users\Lenovo\Desktop\login-signup\src\componenets\login.js
+C:\Users\Lenovo\AppData\Roaming\Code\User\History\3d8ffb42\bXZV.js -> c:\Users\Lenovo\Desktop\login-signup\src\componenets\signup.js
+C:\Users\Lenovo\AppData\Roaming\Code\User\History\4d9682c0\b7ub.js -> c:\Users\Lenovo\Desktop\login-signup\src\index.js
+C:\Users\Lenovo\AppData\Roaming\Code\User\History\5b0f458b\1KXN.jsx -> c:\Users\Lenovo\Documents\login-signup\src\App.jsx
+C:\Users\Lenovo\AppData\Roaming\Code\User\History\6591b088\RvoB.jsx -> c:\Users\Lenovo\Documents\login-signup\src\components\login.jsx
+C:\Users\Lenovo\AppData\Roaming\Code\User\History\6cda0526\HptY.js -> c:\Users\Lenovo\Documents\login-signup\src\componenets\signup.js
+C:\Users\Lenovo\AppData\Roaming\Code\User\History\d31aa1d\F0xl.js -> c:\Users\Lenovo\Documents\login-signup\src\components\signup.js

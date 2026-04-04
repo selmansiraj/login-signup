@@ -1,0 +1,163 @@
+body {
+
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+
+  background-color:darkcyan;
+
+}
+
+/* FORM */
+
+.form-container {
+
+  width: 360px;
+
+  margin: 80px auto;
+
+  background: white;
+
+  padding: 30px;
+
+  border-radius: 16px;
+
+  box-shadow:
+  0 10px 25px rgba(0,0,0,0.2);
+
+  text-align: center;
+
+}
+
+.form-container h2 {
+
+  margin-bottom: 20px;
+
+}
+
+input {
+
+  width: 90%;
+
+  padding: 12px;
+
+  margin: 8px 0;
+
+  border-radius: 8px;
+
+  border: 1px solid #ccc;
+
+  font-size: 15px;
+
+}
+
+button {
+
+  width: 100%;
+
+  padding: 12px;
+
+  margin-top: 12px;
+
+  border: none;
+
+  border-radius: 8px;
+
+  font-size: 16px;
+
+  cursor: pointer;
+
+  transition: 0.3s;
+
+  background: #1f4037;
+
+  color: white;
+
+}
+
+button:hover {
+  color:#fff;
+  background: #14532d;
+
+}
+
+/* LINK BUTTON */
+
+.link-btn {
+
+  background: none;
+
+  color: #1f4037;
+
+  border: none;
+
+  cursor: pointer;
+
+  margin-top: 10px;
+
+}
+
+/* DASHBOARD */
+
+.dashboard-container {
+
+  padding: 40px;
+
+  text-align: center;
+
+}
+
+.title {
+
+  color: white;
+
+  margin-bottom: 30px;
+
+}
+
+/* CARD */
+
+.card {
+
+  width: 420px;
+
+  margin: auto;
+
+  background: white;
+
+  padding: 30px;
+
+  border-radius: 16px;
+
+  box-shadow:
+  0 10px 20px rgba(0,0,0,0.2);
+
+  text-align: left;
+
+}
+
+.card p {
+
+  margin: 10px 0;
+
+}
+
+/* BUTTONS */
+
+.btn-group {
+
+  margin-top: 20px;
+
+}
+
+.logout-btn {
+  width: 15%;
+  background: #dc2626;
+
+}
+
+.edit-btn {
+  margin-right: 1%;  
+  width: 15%;
+  background: #f59e0b;
+
+}
