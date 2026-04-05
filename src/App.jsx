@@ -8,13 +8,15 @@ useLocation
 }
 from "react-router-dom";
 
-import HomePage from "./components/HomePage.jsx";
-import Login from "./components/login.jsx";
-import Signup from "./components/signup.jsx";
-import Dashboard from "./components/Dashboard.jsx";
-import ForgotPassword from "./components/forgot-password.jsx";
-import ResetPassword from "./components/reset-password.jsx";
-import GithubCallback from "./components/github-callback.jsx";
+import HomePage from "./features/home/pages/HomePage.jsx";
+import Login from "./features/auth/pages/LoginPage.jsx";
+import AdminLogin from "./features/admin/pages/AdminLoginPage.jsx";
+import Signup from "./features/auth/pages/SignupPage.jsx";
+import Dashboard from "./features/dashboard/pages/DashboardPage.jsx";
+import AdminDashboard from "./features/admin/pages/AdminDashboardPage.jsx";
+import ForgotPassword from "./features/auth/pages/ForgotPasswordPage.jsx";
+import ResetPassword from "./features/auth/pages/ResetPasswordPage.jsx";
+import GithubCallback from "./features/auth/pages/GitHubCallbackPage.jsx";
 
 function AppRoutes() {
 const location = useLocation();
@@ -67,6 +69,11 @@ element={<Login/>}
 />
 
 <Route
+path="/admin-login"
+element={<AdminLogin/>}
+/>
+
+<Route
 path="/signup"
 element={<Signup/>}
 />
@@ -89,6 +96,11 @@ element={<GithubCallback/>}
 <Route
 path="/dashboard"
 element={<Dashboard/>}
+/>
+
+<Route
+path="/admin-dashboard"
+element={<AdminDashboard/>}
 />
 
 </Routes>
