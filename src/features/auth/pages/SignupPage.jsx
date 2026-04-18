@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { useGoogleLogin } from "@react-oauth/google";
 import AuthTravelLayout from "../components/AuthTravelLayout";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
+import { isGoogleOAuthConfigured } from "../../../config/googleOAuth.js";
 import {
   AUTH_API_BASE_URL,
   getApiErrorMessage,
@@ -61,16 +62,14 @@ function GithubIcon(props) {
 
 export default function Signup() {
   const [form, setForm] = useState(initialForm);
+  const formRef = useRef(form);
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const buildGooglePayload = () => ({
-    username: form.username.trim(),
-    phone: form.phone.trim().replace(/\s+/g, ""),
-    location: form.location.trim(),
-    birthdate: form.birthdate
-  });
+  useEffect(() => {
+    formRef.current = form;
+  }, [form]);
 
   const buildGithubPayload = () => ({
     username: form.username.trim(),
@@ -158,8 +157,14 @@ export default function Signup() {
     }
   };
 
-  const completeGoogleSignup = async (profile) => {
-    const partialPayload = buildGooglePayload();
+  const completeGoogleSignup = async (profile, mergedForm) => {
+    const source = mergedForm || formRef.current;
+    const partialPayload = {
+      username: source.username.trim(),
+      phone: source.phone.trim().replace(/\s+/g, ""),
+      location: source.location.trim(),
+      birthdate: source.birthdate
+    };
 
     if (Object.values(partialPayload).some((value) => !value)) {
       setErrorMessage("Fill username, phone, location, and birth date before using Google signup.");
@@ -177,7 +182,6 @@ export default function Signup() {
     }
 
     try {
-      setIsSubmitting(true);
       setErrorMessage("");
       const fullname = profile?.name?.trim();
       const email = profile?.email?.trim().toLowerCase();
@@ -224,17 +228,25 @@ export default function Signup() {
     scope: "openid profile email",
     onSuccess: async (tokenResponse) => {
       try {
-        const profileResponse = await axios.get(
-          "https://www.googleapis.com/oauth2/v3/userinfo",
-          {
-            headers: {
-              Authorization: `Bearer ${tokenResponse.access_token}`
-            }
+        setIsSubmitting(true);
+        setErrorMessage("");
+        const profileResponse = await axios.get("https://www.googleapis.com/oauth2/v3/userinfo", {
+          headers: {
+            Authorization: `Bearer ${tokenResponse.access_token}`
           }
-        );
-        await completeGoogleSignup(profileResponse.data);
+        });
+        const profile = profileResponse.data;
+        const current = formRef.current;
+        const merged = {
+          ...current,
+          fullname: (profile.name || "").trim() || current.fullname,
+          email: (profile.email || "").trim().toLowerCase() || current.email
+        };
+        setForm(merged);
+        await completeGoogleSignup(profile, merged);
       } catch (error) {
         setErrorMessage("Google signup failed.");
+      } finally {
         setIsSubmitting(false);
       }
     },
@@ -242,6 +254,16 @@ export default function Signup() {
       setErrorMessage("Google signup failed.");
     }
   });
+
+  const handleGoogleSignupClick = () => {
+    if (!isGoogleOAuthConfigured()) {
+      setErrorMessage(
+        "Google Sign-In is not configured. Add REACT_APP_GOOGLE_CLIENT_ID to `.env` and restart the dev server."
+      );
+      return;
+    }
+    googleSignup();
+  };
 
   const startGithubSignup = () => {
     const partialPayload = buildGithubPayload();
@@ -417,7 +439,8 @@ export default function Signup() {
         <Button
           variant="soft"
           className="travel-auth-social"
-          onClick={() => googleSignup()}
+          onClick={handleGoogleSignupClick}
+          disabled={isSubmitting}
         >
           <span className="travel-auth-social-mark travel-auth-social-mark-google">G</span>
           Google

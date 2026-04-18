@@ -3,19 +3,11 @@ import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
 import "./index.css";
 
-import { GoogleOAuthProvider } 
-from "@react-oauth/google";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+import { GOOGLE_CLIENT_ID } from "./config/googleOAuth.js";
 
-ReactDOM.createRoot(
-  document.getElementById("root")
-).render(
-
-  <GoogleOAuthProvider
-    clientId="YOUR_GOOGLE_CLIENT_ID"
-  >
-
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
     <App />
-
   </GoogleOAuthProvider>
-
 );

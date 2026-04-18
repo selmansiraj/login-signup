@@ -179,6 +179,13 @@ export default function AuthTravelLayout({
                   </button>
 
                   <div className="travel-auth-topbar-actions">
+                    <Button
+                      variant="ghost"
+                      className="travel-auth-home-button travel-auth-places-button"
+                      onClick={() => window.location.assign("/#places")}
+                    >
+                      ✦ Places
+                    </Button>
                     <Button variant="ghost" className="travel-auth-home-button" onClick={() => navigate("/")}>
                       Explore home
                     </Button>

@@ -4,6 +4,7 @@ import { useGoogleLogin } from "@react-oauth/google";
 import AuthTravelLayout from "../components/AuthTravelLayout";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
+import { isGoogleOAuthConfigured } from "../../../config/googleOAuth.js";
 import {
   AUTH_API_BASE_URL,
   getApiErrorMessage,
@@ -116,6 +117,16 @@ export default function Login() {
     }
   });
 
+  const handleGoogleLoginClick = () => {
+    if (!isGoogleOAuthConfigured()) {
+      setErrorMessage(
+        "Google Sign-In is not configured. Add REACT_APP_GOOGLE_CLIENT_ID to `.env` and restart the dev server."
+      );
+      return;
+    }
+    googleLogin();
+  };
+
   const handleLogin = async (event) => {
     event.preventDefault();
 
@@ -170,11 +181,7 @@ export default function Login() {
       sideKicker="Aotearoa in motion"
       sideTitle="Login feels like a boarding lounge now"
       sideCopy="The landscapes rotate behind the page while travel details, tickets, and flight-style accents stay in motion around the scene."
-      topRightAction={
-        <Button variant="ghost" className="travel-auth-home-button travel-auth-admin-button" onClick={() => window.location.assign("/admin-login")}>
-          Admin
-        </Button>
-      }
+
       footer={
         <p className="travel-auth-switch">
           Don&apos;t have an account?
@@ -242,7 +249,8 @@ export default function Login() {
         <Button
           variant="soft"
           className="travel-auth-social"
-          onClick={() => googleLogin()}
+          onClick={handleGoogleLoginClick}
+          disabled={isSubmitting}
         >
           <span className="travel-auth-social-mark travel-auth-social-mark-google">G</span>
           Google

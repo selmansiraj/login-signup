@@ -9,6 +9,7 @@ useLocation
 from "react-router-dom";
 
 import HomePage from "./features/home/pages/HomePage.jsx";
+import HomeAmhPage from "./features/home/pages/HomeAmhPage.jsx";
 import Login from "./features/auth/pages/LoginPage.jsx";
 import AdminLogin from "./features/admin/pages/AdminLoginPage.jsx";
 import Signup from "./features/auth/pages/SignupPage.jsx";
@@ -17,6 +18,7 @@ import AdminDashboard from "./features/admin/pages/AdminDashboardPage.jsx";
 import ForgotPassword from "./features/auth/pages/ForgotPasswordPage.jsx";
 import ResetPassword from "./features/auth/pages/ResetPasswordPage.jsx";
 import GithubCallback from "./features/auth/pages/GitHubCallbackPage.jsx";
+import TravelChatbot from "./features/ai-chat/components/TravelChatbot.jsx";
 
 function AppRoutes() {
 const location = useLocation();
@@ -64,12 +66,22 @@ element={<HomePage/>}
 />
 
 <Route
+path="/homeamh"
+element={<HomeAmhPage/>}
+/>
+
+<Route
 path="/login"
 element={<Login/>}
 />
 
 <Route
 path="/admin-login"
+element={<AdminLogin/>}
+/>
+
+<Route
+path="/Admin"
 element={<AdminLogin/>}
 />
 
@@ -105,6 +117,8 @@ element={<AdminDashboard/>}
 
 </Routes>
 </div>
+
+<TravelChatbot />
 </>
 );
 }

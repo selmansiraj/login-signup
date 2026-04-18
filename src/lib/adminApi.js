@@ -78,3 +78,41 @@ export async function fetchAdminDashboard() {
     headers: getAdminAuthHeaders()
   });
 }
+
+export async function saveAdminPlace(payload) {
+  return axios.post(`${ADMIN_API_BASE_URL}/admin_place_save.php`, payload, {
+    headers: {
+      ...getAdminAuthHeaders()
+    }
+  });
+}
+
+export async function deleteAdminPlace(placeId) {
+  return axios.post(
+    `${ADMIN_API_BASE_URL}/admin_place_delete.php`,
+    { id: placeId },
+    {
+      headers: {
+        "Content-Type": "application/json",
+        ...getAdminAuthHeaders()
+      }
+    }
+  );
+}
+
+export async function fetchTourismPlaces() {
+  return axios.get(`${ADMIN_API_BASE_URL}/tourism_places.php`);
+}
+
+export async function updateAdminTicket(ticketId, status) {
+  return axios.post(
+    `${ADMIN_API_BASE_URL}/admin_ticket_update.php`,
+    { id: ticketId, status },
+    {
+      headers: {
+        "Content-Type": "application/json",
+        ...getAdminAuthHeaders()
+      }
+    }
+  );
+}

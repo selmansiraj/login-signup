@@ -1,10 +1,10 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import hukaFallsImage from "../../../assets/HukaFalls.jfif";
 import larnachCastleImage from "../../../assets/LarnachCastle.jfif";
 import mapImage from "../../../assets/map.png";
 import milfordImage from "../../../assets/Milford.jpg";
-import mountRuapehuImage from "../../../assets/MountRuapehu.jfif";
+import mountRuapehuImage from "../../../assets/MountRuapehu.jpg";
 import tePapaImage from "../../../assets/TePapa.jfif";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
@@ -13,8 +13,11 @@ import { Input } from "../../../components/ui/input";
 import {
   AUTH_API_BASE_URL,
   clearAuthSession,
+  fetchUserMyTickets,
   getApiErrorMessage,
+  getAuthToken,
   getStoredUser,
+  getUserAuthHeaders,
   updateStoredUser
 } from "../../../lib/authApi";
 
@@ -251,8 +254,11 @@ function RouteCard({ title, eyebrow, copy, image, location, windowLabel, onSelec
       style={{ backgroundImage: `url(${image})` }}
       onClick={onSelect}
     >
+      <div className="portfolio-route-card-glow" />
+      <div className="portfolio-route-card-scan" />
       <div className="portfolio-route-card-overlay" />
       <div className="portfolio-route-card-content">
+        <span className="portfolio-route-card-index">{title.slice(0, 2).toUpperCase()}</span>
         <span className="portfolio-route-card-eyebrow">{eyebrow}</span>
         <h3 className="portfolio-route-card-title">{title}</h3>
         <p className="portfolio-route-card-copy">{copy}</p>
@@ -293,7 +299,10 @@ export default function Dashboard() {
   const [isTicketEditing, setIsTicketEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
-  const [ticketConfirmed, setTicketConfirmed] = useState(false);
+  const [myTickets, setMyTickets] = useState([]);
+  const [loadingTickets, setLoadingTickets] = useState(true);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [navOpen, setNavOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [form, setForm] = useState({
@@ -336,11 +345,44 @@ export default function Dashboard() {
   }, [user]);
 
   const clearanceLabel = completionPercent === 100 ? "Route Ready" : completionPercent >= 60 ? "Pending Details" : "Needs Attention";
-  const ticketStatusPercent = ticketConfirmed ? 100 : 72;
-  const ticketStatusLabel = ticketConfirmed ? "100% confirmed" : "Awaiting confirmation";
-  const ticketStatusCopy = ticketConfirmed
-    ? "The selected route is locked and export-ready."
-    : "Choose a route, review the pass, and confirm it from the ticket panel.";
+
+  const refreshTickets = useCallback(async () => {
+    const token = getAuthToken();
+    if (!token) {
+      setMyTickets([]);
+      setLoadingTickets(false);
+      return;
+    }
+    try {
+      setLoadingTickets(true);
+      const res = await fetchUserMyTickets();
+      setMyTickets(res.data?.tickets || []);
+    } catch {
+      setMyTickets([]);
+    } finally {
+      setLoadingTickets(false);
+    }
+  }, []);
+
+  const sortedTickets = useMemo(() => {
+    return [...myTickets].sort((left, right) => {
+      const leftId = Number(left?.id || 0);
+      const rightId = Number(right?.id || 0);
+
+      if (leftId !== rightId) {
+        return rightId - leftId;
+      }
+
+      const leftTime = new Date(left?.created_at || left?.issued_on || 0).getTime();
+      const rightTime = new Date(right?.created_at || right?.issued_on || 0).getTime();
+      return rightTime - leftTime;
+    });
+  }, [myTickets]);
+
+  useEffect(() => {
+    refreshTickets();
+  }, [refreshTickets]);
+
   const readinessCopy =
     completionPercent === 100
       ? "Your portfolio is complete and ready for planning, booking, and cultural route curation."
@@ -417,6 +459,35 @@ export default function Dashboard() {
     []
   );
 
+  const currentPassCode = `${routeCode}-${selectedRoute.shortCode}`;
+
+  const ticketRowMatch = useMemo(
+    () => sortedTickets.find((t) => String(t.route_code) === String(currentPassCode)) || null,
+    [sortedTickets, currentPassCode]
+  );
+
+  const bookingStatusRaw = ticketRowMatch?.status ? String(ticketRowMatch.status) : "";
+  const bookingNorm = bookingStatusRaw.toLowerCase();
+  const isApproved = bookingNorm.includes("confirm");
+  const isCancelled = bookingNorm.includes("cancel");
+  const isPendingThisRoute = Boolean(ticketRowMatch) && bookingNorm === "pending";
+
+  const ticketStatusPercent = isCancelled ? 12 : isApproved ? 100 : ticketRowMatch ? 48 : 28;
+  const ticketStatusLabel = isCancelled
+    ? "Cancelled"
+    : isApproved
+      ? "Approved"
+      : ticketRowMatch
+        ? "Pending approval"
+        : "Not submitted";
+  const ticketStatusCopy = isCancelled
+    ? "This booking was cancelled by an administrator."
+    : isApproved
+      ? "Your route is confirmed — you can download your travel pass."
+      : ticketRowMatch
+        ? "An administrator will approve or cancel this request."
+        : "Choose a route and submit a booking request from the Routes tab.";
+
   const ticketData = useMemo(
     () => ({
       traveller: user?.fullname || user?.username || "Guest Traveller",
@@ -428,14 +499,14 @@ export default function Dashboard() {
       boardingPoint: selectedRoute.boardingPoint,
       seat: selectedRoute.seat,
       travelClass: selectedRoute.travelClass,
-      status: ticketStatusLabel,
+      status: isCancelled ? "Cancelled" : isApproved ? "Confirmed" : ticketRowMatch ? "Pending" : "—",
       statusPercent: ticketStatusPercent,
       statusCopy: ticketStatusCopy,
-      code: `${routeCode}-${selectedRoute.shortCode}`,
+      code: currentPassCode,
       issuedOn,
       contact: user?.email || "No email saved"
     }),
-    [issuedOn, routeCode, selectedRoute, ticketStatusCopy, ticketStatusLabel, ticketStatusPercent, user]
+    [issuedOn, selectedRoute, ticketStatusCopy, ticketStatusPercent, user, currentPassCode, isCancelled, isApproved, ticketRowMatch]
   );
 
   const handleStartEdit = () => {
@@ -444,6 +515,7 @@ export default function Dashboard() {
     setIsTicketEditing(false);
     syncFormWithUser(user);
     setIsEditing(true);
+    setActiveTab("account");
   };
 
   const handleCancelEdit = () => {
@@ -455,9 +527,9 @@ export default function Dashboard() {
 
   const handleSelectRoute = (index) => {
     setSelectedRouteIndex(index);
-    setTicketConfirmed(false);
     setIsEditing(false);
     setIsTicketEditing(true);
+    setActiveTab("routes");
   };
 
   const handleOpenTicketEditor = () => {
@@ -465,6 +537,7 @@ export default function Dashboard() {
     setSuccessMessage("");
     setIsEditing(false);
     setIsTicketEditing(true);
+    setActiveTab("routes");
   };
 
   const handleConfirmTicket = async () => {
@@ -472,33 +545,33 @@ export default function Dashboard() {
       setErrorMessage("");
       setSuccessMessage("");
 
-      const confirmedTicket = {
+      const bookingPayload = {
         ...ticketData,
-        status: "Confirmed",
-        statusPercent: 100,
-        statusCopy: "The selected route is locked and export-ready."
+        status: "Pending"
       };
 
       const response = await axios.post(
         `${AUTH_API_BASE_URL}/ticket_report.php`,
-        confirmedTicket,
+        bookingPayload,
         {
           headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            ...getUserAuthHeaders()
           }
         }
       );
 
       if (!response.data?.success) {
-        setErrorMessage(response.data?.error || response.data?.message || "Ticket confirmation failed.");
+        setErrorMessage(response.data?.error || response.data?.message || "Booking request failed.");
         return;
       }
 
-      setTicketConfirmed(true);
+      await refreshTickets();
       setIsTicketEditing(false);
-      setSuccessMessage(response.data?.message || "Ticket confirmed and ready to download.");
+      setSuccessMessage(response.data?.message || "Booking submitted — pending admin approval.");
+      setActiveTab("bookings");
     } catch (error) {
-      setErrorMessage(getApiErrorMessage(error, "Ticket confirmation failed."));
+      setErrorMessage(getApiErrorMessage(error, "Booking request failed."));
     }
   };
 
@@ -568,31 +641,93 @@ export default function Dashboard() {
   };
 
   const handleDownloadTicket = () => {
+    if (!isApproved) {
+      setErrorMessage("Your pass can be downloaded after an administrator approves this booking.");
+      return;
+    }
     downloadTravelTicketPdf(ticketData);
   };
 
-  const scrollToSection = (sectionId) => {
-    const section = document.getElementById(sectionId);
-
-    if (!section) {
-      return;
-    }
-
-    const top = section.getBoundingClientRect().top + window.scrollY - 102;
-    window.scrollTo({ top, behavior: "smooth" });
+  const goTab = (tab) => () => {
+    setActiveTab(tab);
+    setNavOpen(false);
   };
 
   return (
-    <div className="portfolio-dashboard-shell">
-      <div className="portfolio-dashboard-background" aria-hidden="true">
-        <div className="portfolio-dashboard-gridlines" />
-        <div className="portfolio-dashboard-orb orb-a" />
-        <div className="portfolio-dashboard-orb orb-b" />
-        <div className="portfolio-dashboard-orb orb-c" />
-      </div>
+    <div className={`udb-shell portfolio-dashboard-shell${navOpen ? " udb-shell--nav-open" : ""}`}>
+      <style>{`
+        .udb-shell.portfolio-dashboard-shell{
+          --portfolio-bg:#0a0705;--portfolio-surface:rgba(22,16,12,.94);--portfolio-surface-soft:rgba(201,160,102,.06);
+          --portfolio-border:rgba(201,160,102,.22);--portfolio-text:#f4ebe3;--portfolio-muted:rgba(244,235,227,.72);
+          --portfolio-subtle:rgba(244,235,227,.48);--portfolio-accent:#c9a066;--portfolio-accent-soft:rgba(201,160,102,.2);
+          display:flex;min-height:100vh;position:relative;overflow-x:hidden;
+        }
+        .udb-shell--nav-open{overflow:hidden;touch-action:none}
+        .portfolio-dashboard-navlink.is-active{color:var(--portfolio-accent)!important}
+        .udb-sidebar-backdrop{display:none}
+        .udb-menu-btn{display:none;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;border:1px solid var(--portfolio-border);background:var(--portfolio-surface);color:var(--portfolio-accent);cursor:pointer;flex-shrink:0}
+        .udb-sidebar{width:232px;flex-shrink:0;background:linear-gradient(180deg,#120d0a,#0a0705);border-right:1px solid var(--portfolio-border);display:flex;flex-direction:column;padding:0;z-index:12}
+        .udb-side-brand{padding:22px 18px;border-bottom:1px solid var(--portfolio-border)}
+        .udb-side-brand strong{display:block;font-size:14px;letter-spacing:.04em;color:var(--portfolio-text)}
+        .udb-side-brand span{display:block;font-size:11px;color:var(--portfolio-muted);margin-top:4px}
+        .udb-side-nav{flex:1;padding:14px 10px;display:flex;flex-direction:column;gap:4px}
+        .udb-side-btn{display:flex;align-items:center;gap:10px;width:100%;padding:11px 12px;border-radius:10px;border:none;background:transparent;color:var(--portfolio-muted);font-size:13px;font-weight:500;cursor:pointer;text-align:left;transition:background .2s,color .2s}
+        .udb-side-btn:hover{background:var(--portfolio-surface-soft);color:var(--portfolio-text)}
+        .udb-side-btn.is-active{background:linear-gradient(135deg,rgba(201,160,102,.18),rgba(90,55,30,.35));color:var(--portfolio-accent);border:1px solid rgba(201,160,102,.25)}
+        .udb-side-foot{padding:14px;border-top:1px solid var(--portfolio-border)}
+        .udb-side-logout{width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(220,80,80,.35);background:rgba(40,12,10,.5);color:#f0a8a8;font-size:13px;cursor:pointer}
+        .udb-body{flex:1;min-width:0;position:relative;display:flex;flex-direction:column}
+        .udb-inner.portfolio-dashboard-inner{margin-left:auto;margin-right:auto;width:100%;max-width:min(1380px,calc(100% - 20px));padding-left:12px;padding-right:12px}
+        .portfolio-status-badge.is-cancelled{background:rgba(220,80,80,.15);color:#f0a8a8;border-color:rgba(220,80,80,.35)}
+        @media(max-width:1020px){.udb-sidebar{width:72px}.udb-side-brand span,.udb-side-btn span:last-child{display:none}.udb-side-btn{justify-content:center;padding:12px 8px}}
+        @media(max-width:720px){
+          .udb-sidebar-backdrop{display:block;position:fixed;inset:0;background:rgba(5,4,3,.72);z-index:9;opacity:0;pointer-events:none;transition:opacity .2s}
+          .udb-shell--nav-open .udb-sidebar-backdrop{opacity:1;pointer-events:auto}
+          .udb-menu-btn{display:inline-flex}
+          .udb-sidebar{position:fixed;left:0;top:0;height:100%;width:min(280px,88vw);transform:translateX(-100%);transition:transform .28s ease;pointer-events:none}
+          .udb-sidebar.is-open{transform:translateX(0);pointer-events:auto;box-shadow:16px 0 40px rgba(0,0,0,.5)}
+        }
+      `}</style>
 
-      <div className="portfolio-dashboard-inner">
+      <div className="udb-sidebar-backdrop" aria-hidden="true" onClick={() => setNavOpen(false)} />
+
+      <aside className={`udb-sidebar${navOpen ? " is-open" : ""}`}>
+        <div className="udb-side-brand">
+          <strong>NZ Routes</strong>
+          <span>Traveller console</span>
+        </div>
+        <nav className="udb-side-nav" aria-label="Dashboard">
+          <button type="button" className={`udb-side-btn${activeTab === "overview" ? " is-active" : ""}`} onClick={goTab("overview")}>
+            <span>◆</span><span>Overview</span>
+          </button>
+          <button type="button" className={`udb-side-btn${activeTab === "bookings" ? " is-active" : ""}`} onClick={goTab("bookings")}>
+            <span>▤</span><span>My bookings</span>
+          </button>
+          <button type="button" className={`udb-side-btn${activeTab === "routes" ? " is-active" : ""}`} onClick={goTab("routes")}>
+            <span>◇</span><span>Routes &amp; pass</span>
+          </button>
+          <button type="button" className={`udb-side-btn${activeTab === "account" ? " is-active" : ""}`} onClick={goTab("account")}>
+            <span>◎</span><span>Account</span>
+          </button>
+        </nav>
+        <div className="udb-side-foot">
+          <button type="button" className="udb-side-logout" onClick={logout}>
+            Log out
+          </button>
+        </div>
+      </aside>
+
+      <div className="udb-body">
+        <div className="portfolio-dashboard-background" aria-hidden="true">
+          <div className="portfolio-dashboard-gridlines" />
+          <div className="portfolio-dashboard-orb orb-a" />
+          <div className="portfolio-dashboard-orb orb-b" />
+          <div className="portfolio-dashboard-orb orb-c" />
+        </div>
+
+        <div className="portfolio-dashboard-inner udb-inner">
         <header className="portfolio-dashboard-topbar">
+          <button type="button" className="udb-menu-btn" aria-label="Menu" onClick={() => setNavOpen((v) => !v)}>☰</button>
           <button
             type="button"
             className="portfolio-dashboard-brand"
@@ -607,22 +742,27 @@ export default function Dashboard() {
             </span>
           </button>
 
-          <nav className="portfolio-dashboard-nav" aria-label="Dashboard sections">
-            <button type="button" className="portfolio-dashboard-navlink" onClick={() => scrollToSection("dashboard-overview")}>
-              Overview
-            </button>
-            <button type="button" className="portfolio-dashboard-navlink" onClick={() => scrollToSection("dashboard-routes")}>
-              Routes
-            </button>
-            <button type="button" className="portfolio-dashboard-navlink" onClick={() => scrollToSection("dashboard-passport")}>
-              Passport
-            </button>
-            <button type="button" className="portfolio-dashboard-navlink" onClick={() => scrollToSection("dashboard-account")}>
-              Account
-            </button>
-          </nav>
+          <div className="portfolio-dashboard-section-indicator" aria-live="polite">
+            <span className="portfolio-dashboard-section-kicker">Workspace</span>
+            <strong className="portfolio-dashboard-section-name">
+              {activeTab === "overview"
+                ? "Overview"
+                : activeTab === "bookings"
+                  ? "My bookings"
+                  : activeTab === "routes"
+                    ? "Routes & pass"
+                    : "Account"}
+            </strong>
+          </div>
 
           <div className="portfolio-dashboard-actions-top">
+            <Button
+              variant="soft"
+              className="portfolio-dashboard-top-action"
+              onClick={() => window.location.assign("/#places")}
+            >
+              ✦ Places
+            </Button>
             <Badge className="portfolio-dashboard-level">
               <ShieldIcon className="portfolio-dashboard-badge-icon" />
               {explorerLevel}
@@ -641,6 +781,7 @@ export default function Dashboard() {
           </div>
         ) : null}
 
+        {activeTab === "overview" && (
         <section id="dashboard-overview" className="portfolio-dashboard-hero">
           <div className="portfolio-dashboard-main">
             <div className="portfolio-dashboard-intro">
@@ -650,7 +791,7 @@ export default function Dashboard() {
                 <span>{firstName}</span>
               </h1>
               <p className="portfolio-dashboard-copy">
-                Choose a route, keep your profile current, and export a clean travel ticket when you are ready.
+                Submit route bookings for admin approval. Downloads unlock once a request is confirmed.
               </p>
             </div>
 
@@ -681,10 +822,14 @@ export default function Dashboard() {
                 <div className="portfolio-current-ticket">
                   <div className="portfolio-current-ticket-head">
                     <div>
-                      <span className="portfolio-panel-kicker">Current ticket</span>
+                      <span className="portfolio-panel-kicker">Selected route</span>
                       <strong>{ticketData.routeName}</strong>
                     </div>
-                    <Badge className={`portfolio-status-badge ${ticketConfirmed ? "is-ready" : "is-pending"}`}>
+                    <Badge
+                      className={`portfolio-status-badge ${
+                        isCancelled ? "is-cancelled" : isApproved ? "is-ready" : "is-pending"
+                      }`}
+                    >
                       {ticketStatusLabel}
                     </Badge>
                   </div>
@@ -697,14 +842,127 @@ export default function Dashboard() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        </section>
+        )}
 
-            <section id="dashboard-routes" className="portfolio-routes-section">
+        {activeTab === "bookings" && (
+        <section className="portfolio-dashboard-hero" aria-labelledby="udb-bookings-title">
+          <div className="portfolio-dashboard-main" style={{ maxWidth: 920 }}>
+            <div className="portfolio-section-head" style={{ marginBottom: 20 }}>
+              <div>
+                <span className="portfolio-panel-kicker">Bookings</span>
+                <h2 id="udb-bookings-title" className="portfolio-section-title">Your ticket requests</h2>
+              </div>
+              <Button variant="soft" className="portfolio-dashboard-top-action" type="button" onClick={() => refreshTickets()}>
+                Refresh
+              </Button>
+            </div>
+            {loadingTickets ? (
+              <p className="portfolio-dashboard-copy">Loading bookings…</p>
+            ) : !myTickets.length ? (
+              <p className="portfolio-dashboard-copy">No bookings yet. Use Routes &amp; pass to submit a request.</p>
+            ) : (
+              <div className="portfolio-dashboard-feedback-stack" style={{ gap: 0 }}>
+                <div style={{ overflowX: "auto", borderRadius: 12, border: "1px solid var(--portfolio-border)" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ textAlign: "left", color: "var(--portfolio-muted)", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                        <th style={{ padding: "12px 14px", borderBottom: "1px solid var(--portfolio-border)" }}>Route</th>
+                        <th style={{ padding: "12px 14px", borderBottom: "1px solid var(--portfolio-border)" }}>Code</th>
+                        <th style={{ padding: "12px 14px", borderBottom: "1px solid var(--portfolio-border)" }}>Class</th>
+                        <th style={{ padding: "12px 14px", borderBottom: "1px solid var(--portfolio-border)" }}>Status</th>
+                        <th style={{ padding: "12px 14px", borderBottom: "1px solid var(--portfolio-border)" }}>Issued</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedTickets.map((row) => (
+                        <tr key={row.id} style={{ color: "var(--portfolio-text)" }}>
+                          <td style={{ padding: "12px 14px", borderBottom: "1px solid rgba(255,255,255,.06)" }}>{row.route_name}</td>
+                          <td style={{ padding: "12px 14px", borderBottom: "1px solid rgba(255,255,255,.06)", color: "var(--portfolio-accent)" }}>{row.route_code}</td>
+                          <td style={{ padding: "12px 14px", borderBottom: "1px solid rgba(255,255,255,.06)" }}>{row.travel_class}</td>
+                          <td style={{ padding: "12px 14px", borderBottom: "1px solid rgba(255,255,255,.06)" }}>{row.status}</td>
+                          <td style={{ padding: "12px 14px", borderBottom: "1px solid rgba(255,255,255,.06)", fontSize: 12, color: "var(--portfolio-muted)" }}>{row.issued_on}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+        )}
+
+        {activeTab === "routes" && (
+        <section id="dashboard-routes" className="portfolio-dashboard-hero">
+          <div className="portfolio-dashboard-main">
+            <section className="portfolio-routes-section">
+              <div
+                className="portfolio-route-stage"
+                style={{ backgroundImage: `url(${selectedRoute.image})` }}
+              >
+                <div className="portfolio-route-stage-overlay" />
+                <div className="portfolio-route-stage-content">
+                  <div className="portfolio-route-stage-copy">
+                    <div className="portfolio-ticket-chip-row">
+                      <span className="portfolio-ticket-chip">Live route board</span>
+                      <span className="portfolio-ticket-chip">{selectedRoute.travelClass}</span>
+                      <span className="portfolio-ticket-chip portfolio-ticket-chip--accent">{selectedRoute.location}</span>
+                    </div>
+
+                    <span className="portfolio-panel-kicker">Featured journey</span>
+                    <h2 className="portfolio-route-stage-title">{selectedRoute.title}</h2>
+                    <p className="portfolio-route-stage-text">{selectedRoute.copy}</p>
+
+                    <div className="portfolio-route-stage-actions">
+                      <Button className="portfolio-route-stage-action" onClick={handleOpenTicketEditor}>
+                        Edit ticket
+                      </Button>
+                      <Button
+                        variant="soft"
+                        className="portfolio-route-stage-action"
+                        onClick={handleDownloadTicket}
+                        disabled={!isApproved}
+                      >
+                        <DownloadIcon className="portfolio-dashboard-inline-icon" />
+                        Download PDF
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="portfolio-route-stage-grid">
+                    <div className="portfolio-route-stage-stat">
+                      <span>Departure</span>
+                      <strong>{selectedRoute.departureDate}</strong>
+                    </div>
+                    <div className="portfolio-route-stage-stat">
+                      <span>Window</span>
+                      <strong>{selectedRoute.departureWindow}</strong>
+                    </div>
+                    <div className="portfolio-route-stage-stat">
+                      <span>Boarding</span>
+                      <strong>{selectedRoute.boardingPoint}</strong>
+                    </div>
+                    <div className="portfolio-route-stage-stat">
+                      <span>Seat</span>
+                      <strong>{selectedRoute.seat}</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="portfolio-section-head">
                 <div>
                   <span className="portfolio-panel-kicker">Curated routes</span>
                   <h2 className="portfolio-section-title">Select a route for your ticket</h2>
                 </div>
-                <Button variant="ghost" className="portfolio-section-button" onClick={handleDownloadTicket}>
+                <Button
+                  variant="ghost"
+                  className="portfolio-section-button"
+                  onClick={handleDownloadTicket}
+                  disabled={!isApproved}
+                >
                   <DownloadIcon className="portfolio-dashboard-inline-icon" />
                   Download PDF
                 </Button>
@@ -730,6 +988,9 @@ export default function Dashboard() {
               className="portfolio-passport-card"
               style={{ backgroundImage: `url(${mountRuapehuImage})` }}
             >
+              <div className="portfolio-passport-aura aura-one" />
+              <div className="portfolio-passport-aura aura-two" />
+              <div className="portfolio-passport-grid-glow" />
               <div className="portfolio-passport-overlay" />
               <div className="portfolio-passport-map">
                 <img src={mapImage} alt="" />
@@ -744,10 +1005,18 @@ export default function Dashboard() {
                 <div className="portfolio-ticket-chip-row">
                   <span className="portfolio-ticket-chip">Selected route</span>
                   <span className="portfolio-ticket-chip">{ticketData.travelClass}</span>
+                  <span className="portfolio-ticket-chip portfolio-ticket-chip--accent">{ticketStatusLabel}</span>
                 </div>
 
                 <h2 className="portfolio-passport-title">{ticketData.routeName}</h2>
                 <p className="portfolio-passport-subtitle">{ticketData.routeNote}</p>
+
+                <div className="portfolio-passport-storyline">
+                  <span className="portfolio-passport-storyline-dot" />
+                  <p>
+                    A cinematic route pass with live approval tracking, export-ready details, and a cleaner travel rhythm.
+                  </p>
+                </div>
 
                 <div className="portfolio-ticket-meta">
                   <div className="portfolio-ticket-meta-block">
@@ -806,7 +1075,7 @@ export default function Dashboard() {
 
                     <div className="portfolio-ticket-editor-actions">
                       <Button className="portfolio-ticket-editor-action" onClick={handleConfirmTicket}>
-                        Confirm ticket
+                        Submit booking
                       </Button>
                       <Button variant="soft" className="portfolio-ticket-editor-action" onClick={() => setIsTicketEditing(false)}>
                         Keep editing later
@@ -816,15 +1085,19 @@ export default function Dashboard() {
                 ) : null}
 
                 <div className="portfolio-ticket-footer-note">
-                  Issued {ticketData.issuedOn}. Download the PDF version anytime from this panel.
+                  Requested {ticketData.issuedOn}. PDF download unlocks after admin approval.
                 </div>
               </div>
 
               <div className="portfolio-passport-footer">
-                <Button className="portfolio-passport-action" onClick={handleConfirmTicket} disabled={ticketConfirmed}>
-                  {ticketConfirmed ? "Confirmed" : "Confirm ticket"}
+                <Button
+                  className="portfolio-passport-action"
+                  onClick={handleConfirmTicket}
+                  disabled={isApproved || isPendingThisRoute}
+                >
+                  {isApproved ? "Approved" : isPendingThisRoute ? "Pending approval" : isCancelled ? "Submit new booking" : "Submit booking"}
                 </Button>
-                <Button className="portfolio-passport-action" onClick={handleDownloadTicket}>
+                <Button className="portfolio-passport-action" onClick={handleDownloadTicket} disabled={!isApproved}>
                   <DownloadIcon className="portfolio-dashboard-inline-icon" />
                   Download ticket
                 </Button>
@@ -850,7 +1123,9 @@ export default function Dashboard() {
             </Card>
           </aside>
         </section>
+        )}
 
+        {activeTab === "account" && (
         <section id="dashboard-account" className="portfolio-account-section">
           <Card className="portfolio-account-card">
             <CardHeader className="portfolio-account-head">
@@ -954,6 +1229,8 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </section>
+        )}
+      </div>
       </div>
     </div>
   );
