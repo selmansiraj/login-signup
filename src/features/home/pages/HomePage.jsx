@@ -704,7 +704,7 @@ export default function HomePage() {
   const localizedHeroSlides = content.heroSlides;
   const localizedHeritageStats = content.heritageStats;
   const localizedLandmarkCards = content.landmarkCards;
-  const localizedJourneys = content.curatedJourneys;
+  //const localizedJourneys = content.curatedJourneys;
   const localizedCultureHighlights = content.cultureHighlights;
   const localizedTraditions = content.traditionsCards;
   const localizedAboutFeatures = content.aboutFeatures;
